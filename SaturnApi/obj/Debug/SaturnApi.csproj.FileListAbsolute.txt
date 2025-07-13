@@ -1,0 +1,6 @@
+C:\Users\giuli\source\repos\SaturnApi\SaturnApi\bin\Debug\SaturnApi.dll
+C:\Users\giuli\source\repos\SaturnApi\SaturnApi\bin\Debug\SaturnApi.pdb
+C:\Users\giuli\source\repos\SaturnApi\SaturnApi\obj\Debug\SaturnApi.csproj.AssemblyReference.cache
+C:\Users\giuli\source\repos\SaturnApi\SaturnApi\obj\Debug\SaturnApi.csproj.CoreCompileInputs.cache
+C:\Users\giuli\source\repos\SaturnApi\SaturnApi\obj\Debug\SaturnApi.dll
+C:\Users\giuli\source\repos\SaturnApi\SaturnApi\obj\Debug\SaturnApi.pdb
