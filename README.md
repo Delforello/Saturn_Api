@@ -26,4 +26,4 @@ Xeno
 
 https://discord.gg/xeno-now
 
-https://www.xeno.now/
+https://www.xeno.onl
