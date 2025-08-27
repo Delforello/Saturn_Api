@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -29,7 +29,18 @@ namespace SaturnApi
         private static bool _initialized;
         private static List<ClientInfo> _cachedClients = new List<ClientInfo>();
         private static DateTime _lastClientFetchTime = DateTime.MinValue;
-        private const int CacheDurationMs = 500;
+        private static readonly object _cacheLock = new object();
+        private const int CacheDurationMs = 3000;
+
+        private static readonly Regex ClientRegex = new Regex(
+            "\\[\\s*(\\d+),\\s*\"(.*?)\",\\s*\"(.*?)\",\\s*(\\d+)\\s*\\]",
+            RegexOptions.Compiled
+        );
+
+        private static readonly Regex KickRegex = new Regex(
+            @"(\w+)\s*[:\.]\s*Kick\s*\(([^)]*)\)|(\w+)\s*\[\s*[""']Kick[""']\s*\]\s*\(([^)]*)\)",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled
+        );
 
         public static void Inject()
         {
@@ -45,11 +56,31 @@ namespace SaturnApi
                 try { proc.WaitForInputIdle(5000); } catch { }
             }
 
-            Thread.Sleep(2000);
+            Thread.Sleep(500);
 
             Attach();
-            WaitForClients();
-            _isInjected = GetClientsList().Count > 0;
+
+            RefreshClientsCache();
+            if (_cachedClients.Count > 0)
+            {
+                _isInjected = true;
+                return;
+            }
+
+            int timeoutMs = 3000;
+            int pollInterval = 100;
+            int waited = 0;
+            while (waited < timeoutMs)
+            {
+                RefreshClientsCache();
+                if (_cachedClients.Count > 0)
+                    break;
+
+                Thread.Sleep(pollInterval);
+                waited += pollInterval;
+            }
+
+            _isInjected = _cachedClients.Count > 0;
         }
 
         public static bool IsInjected() => _isInjected;
@@ -67,80 +98,60 @@ namespace SaturnApi
             }
         }
 
-        private static readonly string[] DangerousPatterns = new[]
+        private static string AntiKick(string source)
         {
-            @"game\s*:\s*Shutdown\s*\(",
-            @"LocalPlayer\s*:\s*Kick\s*\(",
-        };
-
-        private static bool IsScriptDangerous(string source)
-        {
-            foreach (var pattern in DangerousPatterns)
-            {
-                if (Regex.IsMatch(source, pattern, RegexOptions.IgnoreCase))
-                    return true;
-            }
-            return false;
+            return KickRegex.Replace(source, "print('[SaturnApi Protection] Kick function blocked.')");
         }
 
         public static void Execute(string scriptSource)
         {
             var clients = GetClientsList();
-            if (clients.Count == 0) return;
 
-            if (IsScriptDangerous(scriptSource))
-            {
-                return;
-            }
+            var activeClients = clients.Where(c => c.State == 3).ToList();
+            if (activeClients.Count == 0) return;
 
-            int[] ids = clients.Select(c => c.Id).ToArray();
+            string sanitized = AntiKick(scriptSource);
 
-            byte[] scriptBytes = Encoding.UTF8.GetBytes(scriptSource + "\0");
+            int[] ids = activeClients.Select(c => c.Id).ToArray();
+            byte[] scriptBytes = Encoding.UTF8.GetBytes(sanitized + "\0");
             Execute(scriptBytes, ids, ids.Length);
         }
 
         public static List<ClientInfo> GetClientsList()
         {
-            if ((DateTime.Now - _lastClientFetchTime).TotalMilliseconds < CacheDurationMs)
-                return new List<ClientInfo>(_cachedClients);
+            lock (_cacheLock)
+            {
+                if ((DateTime.Now - _lastClientFetchTime).TotalMilliseconds < CacheDurationMs)
+                    return _cachedClients;
 
-            List<ClientInfo> freshClients = new List<ClientInfo>();
+                RefreshClientsCache();
+                return _cachedClients;
+            }
+        }
+
+        private static void RefreshClientsCache()
+        {
             IntPtr ptr = GetClients();
-            if (ptr == IntPtr.Zero) return freshClients;
+            if (ptr == IntPtr.Zero) return;
 
             string raw = Marshal.PtrToStringAnsi(ptr);
-            if (string.IsNullOrWhiteSpace(raw)) return freshClients;
+            if (string.IsNullOrWhiteSpace(raw)) return;
 
-            var matches = Regex.Matches(raw, "\\[\\s*(\\d+),\\s*\"(.*?)\",\\s*\"(.*?)\",\\s*(\\d+)\\s*\\]");
+            var freshClients = new List<ClientInfo>();
+            var matches = ClientRegex.Matches(raw);
             foreach (Match match in matches)
             {
-                ClientInfo client = new ClientInfo
+                freshClients.Add(new ClientInfo
                 {
                     Id = int.Parse(match.Groups[1].Value),
                     Name = match.Groups[2].Value,
                     Version = match.Groups[3].Value,
                     State = int.Parse(match.Groups[4].Value)
-                };
-                freshClients.Add(client);
+                });
             }
 
             _cachedClients = freshClients;
             _lastClientFetchTime = DateTime.Now;
-
-            return new List<ClientInfo>(_cachedClients);
-        }
-
-        private static void WaitForClients(int timeoutMs = 3000, int pollInterval = 100)
-        {
-            int waited = 0;
-            while (waited < timeoutMs)
-            {
-                if (GetClientsList().Count > 0)
-                    break;
-
-                Thread.Sleep(pollInterval);
-                waited += pollInterval;
-            }
         }
 
         public struct ClientInfo
