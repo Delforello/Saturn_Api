@@ -8,6 +8,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
+using IWshRuntimeLibrary;
 
 namespace SaturnApi
 {
@@ -46,45 +47,41 @@ namespace SaturnApi
 
         private static void Folders()
         {
-            string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            string programFilesPath = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
-            string currentPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            string xenoPath = Path.Combine(localAppData, "Xeno");
 
             string[] directories =
             {
-        Path.Combine(appDataPath, "Saturn Api", "autoexec"),
-        Path.Combine(appDataPath, "Saturn Api", "workspace"),
-        Path.Combine(appDataPath, "Saturn Api", "scripts"),
+        Path.Combine(xenoPath, "autoexec"),
+        Path.Combine(xenoPath, "scripts"),
+        Path.Combine(xenoPath, "workspace")
     };
-
             foreach (var dir in directories)
             {
                 if (!Directory.Exists(dir))
                 {
                     Directory.CreateDirectory(dir);
+                    Console.WriteLine($"Creata cartella: {dir}");
                 }
             }
-            CreateShortcuts(programFilesPath, currentPath);
-        }
+            string currentDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
 
-        private static void CreateShortcuts(string programFilesPath, string targetPath)
-        {
-            string shortcutFolder = Path.Combine(programFilesPath, "Saturn Api");
-
-            if (!Directory.Exists(shortcutFolder))
+            foreach (var sourceDir in directories)
             {
-                Directory.CreateDirectory(shortcutFolder);
+                string folderName = Path.GetFileName(sourceDir);
+                string shortcutPath = Path.Combine(currentDirectory, $"{folderName}.lnk");
+
+                if (!System.IO.File.Exists(shortcutPath))
+                {
+                    var shell = new WshShell();
+                    IWshShortcut shortcut = (IWshShortcut)shell.CreateShortcut(shortcutPath);
+
+                    shortcut.TargetPath = sourceDir;
+                    shortcut.Description = $"Collegamento a {folderName}";
+                    shortcut.WorkingDirectory = sourceDir;
+                    shortcut.Save();
+                }
             }
-
-            string shortcutPath = Path.Combine(shortcutFolder, "Saturn Api.lnk");
-
-            var shell = new IWshRuntimeLibrary.WshShell();
-            IWshRuntimeLibrary.IWshShortcut shortcut = (IWshRuntimeLibrary.IWshShortcut)shell.CreateShortcut(shortcutPath);
-
-            shortcut.TargetPath = targetPath;
-            shortcut.Description = "Collegamento a Saturn Api";
-            shortcut.WorkingDirectory = targetPath;
-            shortcut.Save();
         }
         public static void Inject()
         {
@@ -103,15 +100,13 @@ namespace SaturnApi
             Thread.Sleep(500);
 
             Attach();
+
             string filePath = Path.Combine(
-    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-    "Xeno", "autoexec", "Agent.lua");
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Xeno", "autoexec", "Agent.lua");
 
-            string directory = Path.GetDirectoryName(filePath);
-
-            if (!File.Exists(filePath)) // MODIFY THIS SCRIPT LUA FOR CUSTOM USER-AGENT
-            {
-                string luaScript = @"oldr = request
+            string directory = Path.GetDirectoryName(filePath); // MODIFY THIS LUA CODE FOR CHANGE THE USER-AGENT
+            string luaScript = @"oldr = request
 
 getgenv().request = function(options)
     if options.Headers then
@@ -125,17 +120,20 @@ end
 
 request = getgenv().request
 ";
-                File.WriteAllText(filePath, luaScript);
+            if (!Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory);
             }
+
+            System.IO.File.WriteAllText(filePath, luaScript);
+            Console.WriteLine($"File Agent.lua creato/aggiornato: {filePath}");
+
             GetClients();
-
-
 
             RefreshClientsCache();
             if (_cachedClients.Count > 0)
             {
                 _isInjected = true;
-
                 return;
             }
 
@@ -154,7 +152,6 @@ request = getgenv().request
 
             _isInjected = _cachedClients.Count > 0;
         }
-
         public static bool IsInjected() => _isInjected;
 
         public static bool IsRobloxOpen()
