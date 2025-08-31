@@ -1,7 +1,9 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -42,6 +44,48 @@ namespace SaturnApi
             RegexOptions.IgnoreCase | RegexOptions.Compiled
         );
 
+        private static void Folders()
+        {
+            string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            string programFilesPath = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+            string currentPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+
+            string[] directories =
+            {
+        Path.Combine(appDataPath, "Saturn Api", "autoexec"),
+        Path.Combine(appDataPath, "Saturn Api", "workspace"),
+        Path.Combine(appDataPath, "Saturn Api", "scripts"),
+    };
+
+            foreach (var dir in directories)
+            {
+                if (!Directory.Exists(dir))
+                {
+                    Directory.CreateDirectory(dir);
+                }
+            }
+            CreateShortcuts(programFilesPath, currentPath);
+        }
+
+        private static void CreateShortcuts(string programFilesPath, string targetPath)
+        {
+            string shortcutFolder = Path.Combine(programFilesPath, "Saturn Api");
+
+            if (!Directory.Exists(shortcutFolder))
+            {
+                Directory.CreateDirectory(shortcutFolder);
+            }
+
+            string shortcutPath = Path.Combine(shortcutFolder, "Saturn Api.lnk");
+
+            var shell = new IWshRuntimeLibrary.WshShell();
+            IWshRuntimeLibrary.IWshShortcut shortcut = (IWshRuntimeLibrary.IWshShortcut)shell.CreateShortcut(shortcutPath);
+
+            shortcut.TargetPath = targetPath;
+            shortcut.Description = "Collegamento a Saturn Api";
+            shortcut.WorkingDirectory = targetPath;
+            shortcut.Save();
+        }
         public static void Inject()
         {
             if (!_initialized)
@@ -59,11 +103,39 @@ namespace SaturnApi
             Thread.Sleep(500);
 
             Attach();
+            string filePath = Path.Combine(
+    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+    "Xeno", "autoexec", "Agent.lua");
+
+            string directory = Path.GetDirectoryName(filePath);
+
+            if (!File.Exists(filePath)) // MODIFY THIS SCRIPT LUA FOR CUSTOM USER-AGENT
+            {
+                string luaScript = @"oldr = request
+
+getgenv().request = function(options)
+    if options.Headers then
+        options.Headers[""User-Agent""] = ""Saturn X""
+    else
+        options.Headers = {[""User-Agent""] = ""Saturn X""}
+    end
+    local response = oldr(options)
+    return response
+end 
+
+request = getgenv().request
+";
+                File.WriteAllText(filePath, luaScript);
+            }
+            GetClients();
+
+
 
             RefreshClientsCache();
             if (_cachedClients.Count > 0)
             {
                 _isInjected = true;
+
                 return;
             }
 
@@ -87,6 +159,7 @@ namespace SaturnApi
 
         public static bool IsRobloxOpen()
         {
+            Folders();
             return Process.GetProcessesByName("RobloxPlayerBeta").Any();
         }
 
@@ -115,6 +188,7 @@ namespace SaturnApi
             int[] ids = activeClients.Select(c => c.Id).ToArray();
             byte[] scriptBytes = Encoding.UTF8.GetBytes(sanitized + "\0");
             Execute(scriptBytes, ids, ids.Length);
+
         }
 
         public static List<ClientInfo> GetClientsList()
@@ -126,6 +200,7 @@ namespace SaturnApi
 
                 RefreshClientsCache();
                 return _cachedClients;
+
             }
         }
 
@@ -160,6 +235,8 @@ namespace SaturnApi
             public string Name;
             public string Version;
             public int State;
+
         }
+
     }
 }
