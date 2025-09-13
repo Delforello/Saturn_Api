@@ -21,6 +21,9 @@ SaturnApi.Api.IsInjected();
 
 SaturnApi.Api.KillRoblox();
 
+# How to make an executor with Saturn Api
+
+https://www.youtube.com/watch?v=-QB6N0mTpQ4&t=22s
 
 # Credits
 
