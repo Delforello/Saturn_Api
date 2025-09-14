@@ -126,7 +126,6 @@ request = getgenv().request
             }
 
             System.IO.File.WriteAllText(filePath, luaScript);
-            Console.WriteLine($"File Agent.lua creato/aggiornato: {filePath}");
 
             GetClients();
 
@@ -236,4 +235,5 @@ request = getgenv().request
         }
 
     }
+
 }
