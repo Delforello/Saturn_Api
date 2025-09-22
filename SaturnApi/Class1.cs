@@ -30,10 +30,6 @@ namespace SaturnApi
 
         private static bool _isInjected;
         private static bool _initialized;
-        private static List<ClientInfo> _cachedClients = new List<ClientInfo>();
-        private static DateTime _lastClientFetchTime = DateTime.MinValue;
-        private static readonly object _cacheLock = new object();
-        private const int CacheDurationMs = 3000;
 
         private static readonly Regex ClientRegex = new Regex(
             "\\[\\s*(\\d+),\\s*\"(.*?)\",\\s*\"(.*?)\",\\s*(\\d+)\\s*\\]",
@@ -52,10 +48,11 @@ namespace SaturnApi
 
             string[] directories =
             {
-        Path.Combine(xenoPath, "autoexec"),
-        Path.Combine(xenoPath, "scripts"),
-        Path.Combine(xenoPath, "workspace")
-    };
+                Path.Combine(xenoPath, "autoexec"),
+                Path.Combine(xenoPath, "scripts"),
+                Path.Combine(xenoPath, "workspace")
+            };
+
             foreach (var dir in directories)
             {
                 if (!Directory.Exists(dir))
@@ -64,6 +61,7 @@ namespace SaturnApi
                     Console.WriteLine($"Creata cartella: {dir}");
                 }
             }
+
             string currentDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
 
             foreach (var sourceDir in directories)
@@ -83,6 +81,7 @@ namespace SaturnApi
                 }
             }
         }
+
         public static void Inject()
         {
             if (!_initialized)
@@ -98,14 +97,12 @@ namespace SaturnApi
             }
 
             Thread.Sleep(500);
-
             Attach();
-
             string filePath = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "Xeno", "autoexec", "Agent.lua");
 
-            string directory = Path.GetDirectoryName(filePath); // MODIFY THIS LUA CODE FOR CHANGE THE USER-AGENT
+            string directory = Path.GetDirectoryName(filePath); // MODIFY THIS LUA SCRIPT FOR CUSTOM USER-AGENT
             string luaScript = @"oldr = request
 
 getgenv().request = function(options)
@@ -120,37 +117,32 @@ end
 
 request = getgenv().request
 ";
+
             if (!Directory.Exists(directory))
-            {
                 Directory.CreateDirectory(directory);
-            }
 
             System.IO.File.WriteAllText(filePath, luaScript);
-
-            GetClients();
-
-            RefreshClientsCache();
-            if (_cachedClients.Count > 0)
-            {
-                _isInjected = true;
-                return;
-            }
 
             int timeoutMs = 3000;
             int pollInterval = 100;
             int waited = 0;
+
             while (waited < timeoutMs)
             {
-                RefreshClientsCache();
-                if (_cachedClients.Count > 0)
-                    break;
+                var clients = GetClientsList();
+                if (clients.Count > 0)
+                {
+                    _isInjected = true;
+                    return;
+                }
 
                 Thread.Sleep(pollInterval);
                 waited += pollInterval;
             }
 
-            _isInjected = _cachedClients.Count > 0;
+            _isInjected = false;
         }
+
         public static bool IsInjected() => _isInjected;
 
         public static bool IsRobloxOpen()
@@ -175,44 +167,28 @@ request = getgenv().request
         public static void Execute(string scriptSource)
         {
             var clients = GetClientsList();
-
             var activeClients = clients.Where(c => c.State == 3).ToList();
             if (activeClients.Count == 0) return;
 
             string sanitized = AntiKick(scriptSource);
-
             int[] ids = activeClients.Select(c => c.Id).ToArray();
             byte[] scriptBytes = Encoding.UTF8.GetBytes(sanitized + "\0");
             Execute(scriptBytes, ids, ids.Length);
-
         }
 
         public static List<ClientInfo> GetClientsList()
         {
-            lock (_cacheLock)
-            {
-                if ((DateTime.Now - _lastClientFetchTime).TotalMilliseconds < CacheDurationMs)
-                    return _cachedClients;
-
-                RefreshClientsCache();
-                return _cachedClients;
-
-            }
-        }
-
-        private static void RefreshClientsCache()
-        {
             IntPtr ptr = GetClients();
-            if (ptr == IntPtr.Zero) return;
+            if (ptr == IntPtr.Zero) return new List<ClientInfo>();
 
             string raw = Marshal.PtrToStringAnsi(ptr);
-            if (string.IsNullOrWhiteSpace(raw)) return;
+            if (string.IsNullOrWhiteSpace(raw)) return new List<ClientInfo>();
 
-            var freshClients = new List<ClientInfo>();
+            var clients = new List<ClientInfo>();
             var matches = ClientRegex.Matches(raw);
             foreach (Match match in matches)
             {
-                freshClients.Add(new ClientInfo
+                clients.Add(new ClientInfo
                 {
                     Id = int.Parse(match.Groups[1].Value),
                     Name = match.Groups[2].Value,
@@ -221,8 +197,7 @@ request = getgenv().request
                 });
             }
 
-            _cachedClients = freshClients;
-            _lastClientFetchTime = DateTime.Now;
+            return clients;
         }
 
         public struct ClientInfo
@@ -231,9 +206,6 @@ request = getgenv().request
             public string Name;
             public string Version;
             public int State;
-
         }
-
     }
-
 }
