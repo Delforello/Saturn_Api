@@ -38,6 +38,8 @@ SaturnApi.Api.SetCustomUserAgent("Test executor");
 If you don't use these customization functions, or if you want to leave a parameter empty, default values will be applied. To leave a parameter empty for example, the icon, use an empty string like this: "".
 These functions go in the constructor.
 
+## For the custom icon you must use an image, not a decal!!
+
 # How to make an executor with Saturn Api
 
 https://www.youtube.com/watch?v=-QB6N0mTpQ4&t=22s
