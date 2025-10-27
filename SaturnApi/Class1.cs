@@ -41,7 +41,10 @@ namespace SaturnApi
         );
 
         private static readonly Regex KickRegex = new Regex(
-            @"(\w+)\s*[:\.]\s*Kick\s*\(([^)]*)\)|(\w+)\s*\[\s*[""']Kick[""']\s*\]\s*\(([^)]*)\)",
+            @"(\w+)\s*[:\.]\s*Kick\s*\(([^)]*)\)|" +
+            @"(\w+)\s*\[\s*[""']Kick[""']\s*\]\s*\(([^)]*)\)|" +
+            @"(\w+)\s*\.\s*Kick\s*\=\s*function|" +
+            @"kick\s*\=\s*function",
             RegexOptions.IgnoreCase | RegexOptions.Compiled
         );
         private static string AntiKick(string source)
