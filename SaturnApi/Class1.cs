@@ -85,7 +85,7 @@ namespace SaturnApi
                     IWshShortcut shortcut = (IWshShortcut)shell.CreateShortcut(shortcutPath);
 
                     shortcut.TargetPath = sourceDir;
-                    shortcut.Description = $"Collegamento a {folderName}";
+                    shortcut.Description = $"Linked {folderName}";
                     shortcut.WorkingDirectory = sourceDir;
                     shortcut.Save();
                 }
@@ -306,3 +306,4 @@ namespace SaturnApi
         }
     }
 }
+
