@@ -3,7 +3,7 @@
 # SapiX
 **(Saturn Api Xeno)**
 
- SapiX is an Api based on Xeno, open source and easy to use, allowing anyone to quickly create their exploits quickly, securely, in a safe way.
+ SapiX is an Api based on Xeno, open source and easy to use, allowing anyone to quickly create their exploits, securely and in a safe way.
 
 - UNC: 83%
 - Level: 3
