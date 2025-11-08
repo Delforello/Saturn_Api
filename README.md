@@ -1,8 +1,7 @@
-## ⚠️If you publish an executor with Saturn Api or modify it, don’t forget to give me credits! I really appreciate it.⚠️
+## ⚠️If you publish an executor with SapiX or modify it, don’t forget to give me credits! I really appreciate it.⚠️
 
-# Saturn Api
- Here is the code of Saturn Api, open-source and free!
- Saturn Api is based on Xeno.
+# SapiX
+ SapiX is an Api based on Xeno, open source and easy to use, allowing anyone to quickly create their exploits quickly, securely, in a safe way.
 
 - UNC: 84%
 - Level: 3
@@ -40,7 +39,7 @@ These functions go in the constructor.
 
 ## For the custom icon you must use an image, not a decal!!
 
-# How to make an executor with Saturn Api
+# How to make an executor with SapiX
 
 https://www.youtube.com/watch?v=-QB6N0mTpQ4&t=22s
 (It doesn't show how to use the new customization functions)
