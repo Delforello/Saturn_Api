@@ -1,7 +1,7 @@
 ## ⚠️If you publish an executor with SapiX or modify it, don’t forget to give me credits! I really appreciate it.⚠️
 
 # SapiX
-(Saturn Api Xeno)
+**(Saturn Api Xeno)**
 
  SapiX is an Api based on Xeno, open source and easy to use, allowing anyone to quickly create their exploits quickly, securely, in a safe way.
 
