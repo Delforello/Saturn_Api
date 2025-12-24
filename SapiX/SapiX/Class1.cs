@@ -9,7 +9,14 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using IWshRuntimeLibrary;
+using static System.Net.Mime.MediaTypeNames;
 using File = System.IO.File;
+
+/* 
+Made by Sonar.
+
+Join the Saturn X discord server! discord.gg/PHWymfWpr4
+ */
 
 namespace SapiX
 {
@@ -50,6 +57,7 @@ namespace SapiX
         private static string LuaScriptNotification;
         private static string LuaScriptUserAgent;
         private static string LuaScriptNameExecutor;
+        private static string autoinject;
         private static readonly object _injectLock = new object();
 
         private static readonly Regex KickRegex = new Regex(
@@ -57,33 +65,46 @@ namespace SapiX
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
         private static string AntiKick(string source) =>
-            KickRegex.Replace(source, "print('[SapiX Protection] Kick function blocked.')");
-
+            KickRegex.Replace(source, "print('[SapiX] Kick function blocked.')");
 
         private const int SW_HIDE = 0;
 
-        private static void Folders()
+        static Api()
         {
-            string xenoPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Xeno");
-            string[] dirs = { "autoexec", "scripts", "workspace" };
-            foreach (string d in dirs)
+            AppDomain.CurrentDomain.ProcessExit += OnProcessExit;
+            SetCustomInjectionNotification("Saturn Api", "Injected Successfully!", "", "5");
+        }
+
+        private static void OnProcessExit(object sender, EventArgs e)
+        {
+            string notifPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Xeno", "autoexec", "CustomNotificationSapiX.lua");
+
+            try
             {
-                string path = Path.Combine(xenoPath, d);
-                if (!Directory.Exists(path)) Directory.CreateDirectory(path);
+                if (File.Exists(notifPath))
+                    File.Delete(notifPath);
             }
-            string exeDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-            foreach (string d in dirs)
-            {
-                string lnk = Path.Combine(exeDir, d + ".lnk");
-                if (!System.IO.File.Exists(lnk))
-                {
-                    var shell = new WshShell();
-                    IWshShortcut link = (IWshShortcut)shell.CreateShortcut(lnk);
-                    link.TargetPath = Path.Combine(xenoPath, d);
-                    link.WorkingDirectory = link.TargetPath;
-                    link.Save();
-                }
-            }
+            catch { }
+        }
+
+
+        //⬇️⬇️⬇️⬇️------------------------------ PUBLIC FUNCTIONS ------------------------------⬇️⬇️⬇️⬇️
+
+
+        public static void Execute(string scriptSource)
+        {
+            var clients = GetClientsList();
+            if (clients.Count == 0 || clients[0].State != 3) return;
+
+            var sb = new StringBuilder();
+            if (!string.IsNullOrEmpty(LuaScriptUserAgent)) sb.AppendLine(LuaScriptUserAgent).AppendLine();
+            if (!string.IsNullOrEmpty(LuaScriptNameExecutor)) sb.AppendLine(LuaScriptNameExecutor).AppendLine();
+            sb.AppendLine(AntiKick(scriptSource));
+
+            var bytes = Encoding.UTF8.GetBytes(sb.ToString() + "\0");
+            Execute(bytes, new int[] { clients[0].Id }, 1);
         }
 
         public static void Inject()
@@ -117,7 +138,7 @@ namespace SapiX
 
                 string notifPath = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "Xeno", "autoexec", "CustomNotification.lua");
+                    "Xeno", "autoexec", "CustomNotificationSapiX.lua");
 
                 Directory.CreateDirectory(Path.GetDirectoryName(notifPath));
                 File.WriteAllText(notifPath, LuaScriptNotification ?? "");
@@ -132,14 +153,36 @@ namespace SapiX
                     if (clients.Count > 0 && clients[0].State == 3)
                     {
                         _isInjected = true;
-                        Task.Delay(5000).ContinueWith(_ => { try { File.Delete(notifPath); } catch { } });
                         return;
                     }
                 }
-
                 _isInjected = false;
-                Task.Delay(5000).ContinueWith(_ => { try { File.Delete(notifPath); } catch { } });
             }
+        }
+
+        public static void SetAutoInject(bool enabled)
+        {
+            string exeDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            string filePath = Path.Combine(exeDir, "AINJconfig.txt");
+
+            File.WriteAllText(filePath, enabled ? "true" : "false");
+            autoinject = enabled ? "true" : "false";
+        }
+
+        public static bool GetAutoInject()
+        {
+            string exeDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            string filePath = Path.Combine(exeDir, "AINJconfig.txt");
+
+            if (!File.Exists(filePath))
+            {
+                autoinject = "false";
+                return false;
+            }
+
+            string val = File.ReadAllText(filePath).Trim().ToLowerInvariant();
+            autoinject = val;
+            return val == "true";
         }
 
         public static bool IsInjected()
@@ -157,38 +200,38 @@ namespace SapiX
                 try { p.Kill(); } catch { }
         }
 
-        public static void Execute(string scriptSource)
-        {
-            var clients = GetClientsList();
-            if (clients.Count == 0 || clients[0].State != 3) return;
-
-            var sb = new StringBuilder();
-            if (!string.IsNullOrEmpty(LuaScriptUserAgent)) sb.AppendLine(LuaScriptUserAgent).AppendLine();
-            if (!string.IsNullOrEmpty(LuaScriptNameExecutor)) sb.AppendLine(LuaScriptNameExecutor).AppendLine();
-            sb.AppendLine(AntiKick(scriptSource));
-
-            var bytes = Encoding.UTF8.GetBytes(sb.ToString() + "\0");
-            Execute(bytes, new int[] { clients[0].Id }, 1);
-        }
-
         public static void SetCustomInjectionNotification(string title = "SapiX", string text = "Injected Successfully!", string idIcon = "", string duration = "5")
         {
             LuaScriptNotification = $@"local coreGui = game:GetService(""CoreGui"")
 local rg = coreGui:FindFirstChild(""RobloxGui"")
 if rg then
+task.spawn(function()
+wait(3)
+for _,v in ipairs(rg.NotificationFrame:GetChildren()) do
+if v:IsA(""Frame"") then v:Destroy() end
+end
+end)
+end
+game.StarterGui:SetCore(""SendNotification"", {{
+Title = ""{title}"",
+Text = ""{text}"",
+Icon = ""rbxassetid://{idIcon}"",
+Duration = {duration}
+}})";
+        }
+
+        public static void DisableInjectionNotification()
+        {
+            LuaScriptNotification = $@"local coreGui = game:GetService(""CoreGui"")
+local rg = coreGui:FindFirstChild(""RobloxGui"")
+if rg then
     task.spawn(function()
-        wait(3)
+        wait(0.3)
         for _,v in ipairs(rg.NotificationFrame:GetChildren()) do
             if v:IsA(""Frame"") then v:Destroy() end
         end
     end)
-end
-game.StarterGui:SetCore(""SendNotification"", {{
-    Title = ""{title}"",
-    Text = ""{text}"",
-    Icon = ""rbxassetid://{idIcon}"",
-    Duration = {duration}
-}})";
+end";
         }
 
         public static void SetCustomUserAgent(string name = "SapiX")
@@ -231,6 +274,30 @@ game.StarterGui:SetCore(""SendNotification"", {{
             public string Name;
             public string Version;
             public int State;
+        }
+
+        private static void Folders()
+        {
+            string xenoPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Xeno");
+            string[] dirs = { "autoexec", "scripts", "workspace" };
+            foreach (string d in dirs)
+            {
+                string path = Path.Combine(xenoPath, d);
+                if (!Directory.Exists(path)) Directory.CreateDirectory(path);
+            }
+            string exeDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            foreach (string d in dirs)
+            {
+                string lnk = Path.Combine(exeDir, d + ".lnk");
+                if (!System.IO.File.Exists(lnk))
+                {
+                    var shell = new WshShell();
+                    IWshShortcut link = (IWshShortcut)shell.CreateShortcut(lnk);
+                    link.TargetPath = Path.Combine(xenoPath, d);
+                    link.WorkingDirectory = link.TargetPath;
+                    link.Save();
+                }
+            }
         }
     }
 }
