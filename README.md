@@ -28,6 +28,12 @@ SapiX.Api.SetCustomUserAgent(string Name);
 
 SapiX.Api.SetCustomNameExecutor(string Name, string Version);
 
+SapiX.Api.DisableInjectionNotification();
+
+Api.GetAutoInject();
+
+Api.SetAutoInject(bool);
+
 # Examples
 
 SapiX.Api.SetCustomInjectionNotification("Test executor", "Injected successfully!", "93547137238535", "3");
@@ -40,6 +46,38 @@ If you don't use these customization functions, or if you want to leave a parame
 These functions go in the constructor.
 
 ## For the custom icon you must use an image, not a decal!!
+
+# How to set AutoInject (example)
+
+**put this before the constructor:**
+
+Timer time = new Timer();
+
+**put this in your constructor (change the checkbox name):**
+
+YOURCHECKBOXNAME.CheckedChanged -= YOURCHECKBOXNAME_CheckedChanged;
+YOURCHECKBOXNAME.CheckedChanged += YOURCHECKBOXNAME_CheckedChanged;
+YOURCHECKBOXNAME.Checked = Api.GetAutoInject();
+
+time.Tick += timertick;
+time.Start();
+
+**then put this function (you can also use this timer for the executor status):**
+
+private void timertick(object sender, EventArgs e)
+{
+    if (Api.GetAutoInject())
+    {
+        Api.Inject();
+    }
+}
+
+**finally put this code for your executor's checkbox (change the checkbox name):**
+
+private void YOURCHECKBOXNAME_CheckedChanged(object sender, EventArgs e)
+{
+    Api.SetAutoInject(YOURCHECKBOXNAME.Checked);
+}
 
 # How to make an executor with SapiX
 
